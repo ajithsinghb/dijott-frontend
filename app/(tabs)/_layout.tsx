@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
+import { Platform, Text } from 'react-native'; // ✅ Added Text import here!
 
 export default function TabLayout() {
   return (
@@ -21,7 +21,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: () => <span style={{ fontSize: 20 }}>🏠</span>,
+          tabBarIcon: () => <Text style={{ fontSize: 20 }}>🏠</Text>, // ✅ Swapped span for Text
         }}
       />
 
@@ -30,7 +30,7 @@ export default function TabLayout() {
         name="research" 
         options={{
           title: 'Research Hub',
-          tabBarIcon: () => <span style={{ fontSize: 20 }}>💼</span>,
+          tabBarIcon: () => <Text style={{ fontSize: 20 }}>💼</Text>, // ✅ Swapped span for Text
         }}
       />
 
@@ -39,17 +39,18 @@ export default function TabLayout() {
         name="deep-writer"
         options={{
           title: 'Deep Writer',
-          tabBarIcon: () => <span style={{ fontSize: 20 }}>✍️</span>,
+          tabBarIcon: () => <Text style={{ fontSize: 20 }}>✍️</Text>, // ✅ Swapped span for Text
         }}
       />
 
-<Tabs.Screen
-  name="engineer"
-  options={{
-    title: 'Calc',
-    tabBarIcon: () => <Text style={{ fontSize: 24 }}>⚙️</Text>,
-  }}
-/>
+      {/* TAB 4: The Calculator */}
+      <Tabs.Screen
+        name="engineer"
+        options={{
+          title: 'Calc',
+          tabBarIcon: () => <Text style={{ fontSize: 24 }}>⚙️</Text>,
+        }}
+      />
       
       {/* Hide the default "explore" tab if you still have that file */}
       <Tabs.Screen
