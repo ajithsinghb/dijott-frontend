@@ -121,10 +121,10 @@ async def format_field_notes(payload: NotesPayload):
         
         # The prompt that gives the AI its strict instructions
         prompt = f"""
-        You are a Senior Regulatory Field Inspector. 
+        You are a Senior Regulatory Field Inspector, Scientist, Occupational Hygienist, Enviornmental, Mechanical, Civil Engineer and Chemical Engineer. 
         Take the following rough, messy field notes and rewrite them into a clean, highly professional, objective, and spell-checked field report paragraph.
         DO NOT add any made-up data. ONLY use the facts provided. 
-        Format it cleanly using bullet points if multiple distinct observations are made.
+        Format it cleanly using bullet points if multiple distinct observations are made. Use appropriate apa style, intext and endtext references. 
 
         RAW NOTES:
         {payload.text}
@@ -212,6 +212,9 @@ async def websocket_deep_research(websocket: WebSocket):
         briefcase_data = payload.get("briefcase_data", [])
         previous_sections = payload.get("previous_sections", "")
         
+        # --- Catch the new Document Type parameter from the frontend ---
+        doc_type = payload.get("doc_type", "Journal Article") 
+        
         research_context = "--- LATEST PEER-REVIEWED SOURCES ---\n"
         for i, article in enumerate(briefcase_data):
             research_context += f"[{i+1}] {article.get('title')}\nAbstract: {article.get('abstract')}\n\n"
@@ -222,8 +225,9 @@ async def websocket_deep_research(websocket: WebSocket):
 
         await websocket.send_json({"type": "status", "message": "🏛️ Architecting outline..."})
         
+        # Modify the outline prompt to be context-aware of the document type
         outline_prompt = f"""
-        Create a strict 3-section outline for a regulatory document based on: {rubric}
+        Create a strict 3-section outline for a {doc_type} based on: {rubric}
         {past_context_prompt}
         Do not include sections that have clearly already been written in the previous sections provided.
         Return ONLY a numbered list of the section titles.
@@ -237,11 +241,29 @@ async def websocket_deep_research(websocket: WebSocket):
         for section in sections[:3]: 
             await websocket.send_json({"type": "status", "message": f"🤖 Agent researching and drafting: {section}..."})
             
+            # --- THE NEW TEXTBOOK-ALIGNED DEEP WRITER PROMPT ---
             section_prompt = f"""
-            Write a detailed regulatory section for: "{section}".
-            Instructions: {rubric}
-            Research: {research_context}
+            You are a Senior Academic Author and Expert Regulatory Compliance Writer. 
+            Draft a detailed manuscript section for the heading: "{section}".
+            
+            TARGET DOCUMENT FORMAT: {doc_type}
+            If writing a "Journal Article", be concise and highly focused. 
+            If writing a "Master's Dissertation", provide detailed background and standard critical analysis.
+            If writing a "PhD Thesis", the section must be exhaustive, demonstrating absolute mastery of the literature, profound critical synthesis, and identification of nuanced gaps in the field.
+
+            USER INSTRUCTIONS & RUBRIC: {rubric}
+            
+            ACADEMIC RESEARCH CONTEXT (Source Material): 
+            {research_context}
+            
+            PREVIOUSLY WRITTEN SECTIONS: 
             {past_context_prompt}
+            
+            STRICT ACADEMIC WRITING RULES:
+            1. STRUCTURE: Follow the IMRaD format principles. If writing an Introduction, use a "funnel" approach—start broad and narrow down to the research question. If writing a Discussion, start by summarizing results, address the knowledge gap, and suggest future clinical implications.
+            2. SYNTHESIS, NO PLAGIARISM: Do not engage in "mosaic plagiarism" (poor paraphrasing). Synthesize the research context entirely into your own original academic voice.
+            3. CITATIONS: Use the Vancouver referencing style. Number references sequentially in the text using brackets (e.g., [1], [2]) based on the Source Material provided.
+            4. TONE: Maintain absolute objective, scientific rigor. 
             
             IMPORTANT: Use your `search_live_regulations` tool if you need to look up the latest updates before writing!
             """
