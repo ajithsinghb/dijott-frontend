@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   paddingVertical: 15, // Gives it nice normal height
   borderRadius: 12,    // Rounds the corners
   flexGrow: 0,         // <-- THIS IS THE FIX! Stops the infinite stretching
-},, 
+},
   disabledButton: { opacity: 0.5 },
   buttonText: { color: 'white', fontWeight: 'bold', fontSize: 12, textAlign: 'center' },
   recordingIndicator: { backgroundColor: '#ffebee', padding: 10, borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#ef9a9a' },
