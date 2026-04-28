@@ -1,201 +1,183 @@
-import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import React, { useState, useRef } from 'react';
+import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView, TextInput, Platform, Alert } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { Document, Packer, Paragraph, TextRun } from 'docx';
-import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
-import { useBriefcase } from '../../context/BriefcaseContext';
 
 export default function DeepWriterScreen() {
-  const { savedArticles } = useBriefcase();
+  const [rubric, setRubric] = useState('');
+  const [previousSections, setPreviousSections] = useState('');
   
-  const [rubricText, setRubricText] = useState('');
-  const [rubricFileName, setRubricFileName] = useState('');
+  // This holds the papers we load from the JSON file
+  const [briefcaseData, setBriefcaseData] = useState([]); 
   
-  const [previousSectionsText, setPreviousSectionsText] = useState('');
-  const [previousFileName, setPreviousFileName] = useState('');
-
   const [isGenerating, setIsGenerating] = useState(false);
-  const [finalArticle, setFinalArticle] = useState('');
-  const [liveStatus, setLiveStatus] = useState('');
-  
-  const ws = useRef<WebSocket | null>(null);
+  const [statusMessage, setStatusMessage] = useState('Idle');
+  const [generatedContent, setGeneratedContent] = useState('');
 
-  useEffect(() => {
-    return () => {
-      if (ws.current) ws.current.close();
-    };
-  }, []);
+  const ws = useRef(null);
 
-  // --- NEW: Universal File Picker & Extractor ---
-  const pickAndExtractFile = async (type: 'rubric' | 'previous') => {
+  // --- NEW: LOAD JSON FILE FUNCTION ---
+  const loadSavedSession = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'text/plain'],
-        copyToCacheDirectory: true,
+      const result = await DocumentPicker.getDocumentAsync({ 
+        type: 'application/json',
+        copyToCacheDirectory: true 
       });
 
-      if (result.canceled) return;
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const fileObj = result.assets[0].file; 
+        const uri = result.assets[0].uri;
 
-      const file = result.assets[0];
-      setLiveStatus(`📄 Extracting text from ${file.name}...`);
+        let fileText = "";
+        
+        // Handle web vs mobile file reading
+        if (Platform.OS === 'web' && fileObj) {
+           fileText = await fileObj.text();
+        } else {
+           const response = await fetch(uri);
+           fileText = await response.text();
+        }
 
-      // Prepare file for HTTP upload
-      const formData = new FormData();
-      formData.append('file', {
-        uri: file.uri,
-        name: file.name,
-        type: file.mimeType || 'application/pdf',
-      } as any);
-
-      // Send to our new Python extraction endpoint
-      // ✅ Change this line:
-const response = await fetch('https://dijott-ai-engine.onrender.com/api/extract-text', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-      
-      if (data.error) {
-        Alert.alert("Extraction Error", data.error);
-        setLiveStatus('');
-        return;
+        const savedPapers = JSON.parse(fileText);
+        setBriefcaseData(savedPapers);
+        setStatusMessage(`✅ Successfully loaded ${savedPapers.length} papers from disk!`);
       }
-
-      if (type === 'rubric') {
-        setRubricText((prev) => prev + "\n\n--- UPLOADED RUBRIC ---\n" + data.text);
-        setRubricFileName(file.name);
-      } else {
-        setPreviousSectionsText(data.text);
-        setPreviousFileName(file.name);
-      }
-      
-      setLiveStatus(''); // Clear status
-
     } catch (error) {
-      console.error(error);
-      Alert.alert("Upload Failed", "Could not process the document.");
-      setLiveStatus('');
+      console.error("Failed to load session:", error);
+      Alert.alert("Error", "Could not read the JSON file.");
+      setStatusMessage("❌ Failed to load JSON file.");
     }
   };
 
-  const startDeepWriting = () => {
-    if (savedArticles.length === 0) {
-      return Alert.alert("Empty Briefcase", "Please save some articles first!");
-    }
-    if (!rubricText.trim()) {
-      return Alert.alert("Missing Instructions", "Please provide or upload a rubric.");
+  // --- THE WEBSOCKET PIPELINE ---
+  const startDeepResearch = () => {
+    if (!rubric.trim()) {
+      return Alert.alert("Hold on!", "Please enter your Instructions & Rubric.");
     }
 
     setIsGenerating(true);
-    setFinalArticle('');
-    setLiveStatus('🔌 Connecting to AI Engine...');
+    setGeneratedContent('');
+    setStatusMessage('🔌 Connecting to AI Engine...');
 
-   // ✅ Change this line:
-ws.current = new WebSocket('wss://dijott-ai-engine.onrender.com/ws/deep-research');
+    // Connect to the Render backend
+    ws.current = new WebSocket('wss://dijott-ai-engine.onrender.com/ws/deep-research');
 
     ws.current.onopen = () => {
-      setLiveStatus('📡 Connected! Sending Context & Instructions...');
-      ws.current?.send(JSON.stringify({
-        rubric: rubricText,
-        briefcase_data: savedArticles,
-        previous_sections: previousSectionsText // <-- Sending the uploaded past context!
+      setStatusMessage('🟢 Connected! Uploading instructions and briefcase data...');
+      
+      // Fire the payload to Python!
+      ws.current.send(JSON.stringify({
+        rubric: rubric,
+        briefcase_data: briefcaseData, 
+        previous_sections: previousSections
       }));
     };
 
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.type === 'status') setLiveStatus(data.message);
-      else if (data.type === 'content') setFinalArticle((prevText) => prevText + data.chunk);
-      else if (data.type === 'done') {
-        setLiveStatus('✨ ' + data.message);
+      
+      if (data.type === "status") {
+        setStatusMessage(data.message);
+      } else if (data.type === "content") {
+        // Append the incoming text chunk to the screen
+        setGeneratedContent(prev => prev + data.chunk);
+      } else if (data.type === "error") {
+        setStatusMessage(`❌ Error: ${data.message}`);
         setIsGenerating(false);
-        ws.current?.close();
-      } 
-      else if (data.type === 'error') {
-        Alert.alert("Pipeline Error", data.message);
-        setLiveStatus('❌ Error occurred.');
+      } else if (data.type === "done") {
+        setStatusMessage('✅ Deep Research Complete!');
         setIsGenerating(false);
       }
     };
 
-    ws.current.onerror = () => {
-      setLiveStatus('❌ Connection lost.');
+    ws.current.onerror = (e) => {
+      setStatusMessage('❌ WebSocket Error. Is the Render server asleep?');
       setIsGenerating(false);
     };
-    ws.current.onclose = () => setIsGenerating(false);
+
+    ws.current.onclose = () => {
+      setIsGenerating(false);
+    };
   };
 
-  const exportToWord = async () => { /* ... existing exportToWord logic stays the same ... */ };
+  // Safe manual abort button
+  const stopGeneration = () => {
+    if (ws.current) {
+      ws.current.close();
+      setStatusMessage('🛑 Generation aborted by user.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         
+        {/* HEADER */}
         <View style={styles.headerRow}>
-          <Text style={styles.header}>Deep Writer</Text>
-          <Text style={styles.subtitle}>Context-Aware Agentic Drafting</Text>
+          <Text style={styles.headerTitle}>Deep Writer</Text>
+          <Text style={styles.headerSubtitle}>Context-Aware Agentic Drafting</Text>
         </View>
 
-        {/* INPUT SECTION 1: RUBRIC */}
+        {/* SECTION 1: INSTRUCTIONS */}
         <View style={styles.section}>
-          <View style={styles.resultsHeader}>
-             <Text style={styles.sectionTitle}>1. Instructions & Rubric</Text>
-             <TouchableOpacity style={styles.uploadBtn} onPress={() => pickAndExtractFile('rubric')}>
-               <Text style={styles.uploadBtnText}>📄 Upload PDF</Text>
-             </TouchableOpacity>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>1. Instructions & Rubric</Text>
           </View>
-          
-          {rubricFileName !== '' && <Text style={styles.fileNameText}>✅ Attached: {rubricFileName}</Text>}
-          
           <TextInput
             style={styles.textArea}
-            placeholder="Type instructions here, or upload a Rubric PDF to auto-fill..."
+            placeholder="e.g., Write a literature review on PFAS effects on health..."
             multiline={true}
-            numberOfLines={4}
-            value={rubricText}
-            onChangeText={setRubricText}
-            textAlignVertical="top"
+            value={rubric}
+            onChangeText={setRubric}
           />
         </View>
 
-        {/* INPUT SECTION 2: PREVIOUS CONTEXT */}
+        {/* SECTION 2: PREVIOUS CONTEXT */}
         <View style={styles.section}>
-          <View style={styles.resultsHeader}>
-             <Text style={styles.sectionTitle}>2. Previous Sections (Optional)</Text>
-             <TouchableOpacity style={styles.uploadBtn} onPress={() => pickAndExtractFile('previous')}>
-               <Text style={styles.uploadBtnText}>📄 Upload Draft</Text>
-             </TouchableOpacity>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>2. Previous Sections (Optional)</Text>
+            <Text style={styles.helperText}>Paste existing sections so the AI matches your tone and doesn't repeat itself.</Text>
           </View>
-          
-          {previousFileName !== '' ? (
-            <Text style={styles.fileNameText}>✅ Context Loaded: {previousFileName}</Text>
-          ) : (
-            <Text style={styles.helperText}>Upload existing sections so the AI matches your tone and doesn't repeat itself.</Text>
-          )}
+          <TextInput
+            style={[styles.textArea, { minHeight: 80 }]}
+            placeholder="Paste your existing draft here..."
+            multiline={true}
+            value={previousSections}
+            onChangeText={setPreviousSections}
+          />
         </View>
 
-        {/* STATUS & ACTIONS */}
-        <Text style={styles.briefcaseStatus}>💼 Briefcase Ready: {savedArticles.length} papers</Text>
+        {/* SECTION 3: THE BRIEFCASE DATA LOADER */}
+        <View style={styles.statusBox}>
+          <Text style={styles.briefcaseText}>
+            💼 Briefcase Ready: {briefcaseData.length} papers
+          </Text>
+          <TouchableOpacity style={styles.loadBtn} onPress={loadSavedSession}>
+             <Text style={styles.loadBtnText}>📂 Load Saved JSON</Text>
+          </TouchableOpacity>
+        </View>
 
-        {liveStatus !== '' && (
-          <View style={styles.statusBar}>
-            <Text style={styles.statusText}>{liveStatus}</Text>
-          </View>
+        <View style={[styles.statusBox, { backgroundColor: '#e8f8f5', borderColor: '#1abc9c' }]}>
+          <Text style={[styles.briefcaseText, { color: '#16a085' }]}>
+            {statusMessage}
+          </Text>
+        </View>
+
+        {/* ACTION BUTTON */}
+        {!isGenerating ? (
+          <TouchableOpacity style={styles.startBtn} onPress={startDeepResearch}>
+            <Text style={styles.startBtnText}>🚀 START DEEP RESEARCH</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={[styles.startBtn, { backgroundColor: '#e74c3c' }]} onPress={stopGeneration}>
+            <Text style={styles.startBtnText}>🛑 STOP GENERATION</Text>
+          </TouchableOpacity>
         )}
 
-        <TouchableOpacity style={[styles.generateBtn, isGenerating && styles.disabledBtn]} onPress={startDeepWriting} disabled={isGenerating}>
-          <Text style={styles.generateBtnText}>
-            {isGenerating ? '⏳ AGENT IS WORKING...' : '🚀 START DEEP RESEARCH'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* OUTPUT BOARD */}
-        {finalArticle !== '' && (
-          <View style={styles.draftingBoard}>
-            <Text style={styles.generatedText}>{finalArticle}</Text>
+        {/* AI OUTPUT AREA */}
+        {generatedContent !== '' && (
+          <View style={styles.outputBox}>
+            <Text style={styles.outputTitle}>AI Draft Output:</Text>
+            <Text style={styles.outputText}>{generatedContent}</Text>
           </View>
         )}
 
@@ -207,25 +189,26 @@ ws.current = new WebSocket('wss://dijott-ai-engine.onrender.com/ws/deep-research
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA', paddingTop: 50, paddingHorizontal: 20 },
   headerRow: { marginBottom: 20 },
-  header: { fontSize: 32, fontWeight: 'bold', color: '#2C3E50' },
-  subtitle: { fontSize: 16, color: '#7F8C8D', marginTop: 2 },
-  section: { backgroundColor: '#FFFFFF', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#34495e' },
-  resultsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  headerTitle: { fontSize: 32, fontWeight: 'bold', color: '#2C3E50' },
+  headerSubtitle: { fontSize: 16, color: '#7F8C8D', marginTop: 2 },
   
-  /* NEW UPLOAD UI STYLES */
-  uploadBtn: { backgroundColor: '#ecf0f1', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6, borderWidth: 1, borderColor: '#bdc3c7' },
-  uploadBtnText: { color: '#2c3e50', fontSize: 12, fontWeight: 'bold' },
-  fileNameText: { color: '#27ae60', fontSize: 13, fontWeight: 'bold', marginBottom: 10 },
-  helperText: { color: '#7f8c8d', fontSize: 13, fontStyle: 'italic' },
+  section: { marginBottom: 20 },
+  sectionHeader: { marginBottom: 10 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#2C3E50' },
+  helperText: { fontSize: 13, color: '#7F8C8D', fontStyle: 'italic', marginTop: 2 },
   
-  briefcaseStatus: { color: '#16a085', fontWeight: 'bold', textAlign: 'center', marginBottom: 10, fontSize: 15 },
-  textArea: { backgroundColor: '#fdfefe', borderWidth: 1, borderColor: '#bdc3c7', borderRadius: 8, padding: 12, fontSize: 15, minHeight: 90 },
-  statusBar: { backgroundColor: '#e8f8f5', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#1abc9c', marginBottom: 10 },
-  statusText: { color: '#16a085', fontWeight: '600', fontSize: 14, textAlign: 'center' },
-  generateBtn: { backgroundColor: '#8e44ad', padding: 16, borderRadius: 10, alignItems: 'center', marginVertical: 5, elevation: 4 },
-  generateBtnText: { color: '#ffffff', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
-  disabledBtn: { opacity: 0.6 },
-  draftingBoard: { backgroundColor: '#ffffff', padding: 20, borderRadius: 12, marginTop: 15, borderWidth: 1, borderColor: '#bdc3c7', minHeight: 300, marginBottom: 40 },
-  generatedText: { color: '#2c3e50', fontSize: 15, lineHeight: 24 },
+  textArea: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#bdc3c7', borderRadius: 8, padding: 15, fontSize: 16, minHeight: 120, textAlignVertical: 'top', color: '#2c3e50' },
+  
+  statusBox: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fdfefe', padding: 15, borderRadius: 8, borderWidth: 1, borderColor: '#ecf0f1', marginBottom: 10 },
+  briefcaseText: { fontSize: 16, fontWeight: 'bold', color: '#2980b9' },
+  
+  loadBtn: { backgroundColor: '#34495e', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 6 },
+  loadBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
+
+  startBtn: { backgroundColor: '#9b59b6', padding: 20, borderRadius: 8, alignItems: 'center', marginBottom: 20, elevation: 2 },
+  startBtnText: { color: 'white', fontWeight: 'bold', fontSize: 18, letterSpacing: 1 },
+
+  outputBox: { backgroundColor: '#f3e5f5', padding: 20, borderRadius: 12, borderWidth: 1, borderColor: '#ce93d8', minHeight: 300 },
+  outputTitle: { fontWeight: 'bold', color: '#6a1b9a', fontSize: 18, marginBottom: 15 },
+  outputText: { color: '#4a148c', fontSize: 16, lineHeight: 26 },
 });
