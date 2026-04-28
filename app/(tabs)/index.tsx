@@ -230,7 +230,14 @@ const styles = StyleSheet.create({
   pdfButton: { backgroundColor: '#34495e' }, 
   recordingButton: { backgroundColor: '#e74c3c' },
   clearButton: { backgroundColor: '#c0392b' }, 
-  aiButton: { backgroundColor: '#9b59b6', width: '100%', marginBottom: 10, padding: 12 }, 
+  aiButton: { 
+  backgroundColor: '#9b59b6', 
+  width: '100%', 
+  marginBottom: 10, 
+  paddingVertical: 15, // Gives it nice normal height
+  borderRadius: 12,    // Rounds the corners
+  flexGrow: 0,         // <-- THIS IS THE FIX! Stops the infinite stretching
+},, 
   disabledButton: { opacity: 0.5 },
   buttonText: { color: 'white', fontWeight: 'bold', fontSize: 12, textAlign: 'center' },
   recordingIndicator: { backgroundColor: '#ffebee', padding: 10, borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#ef9a9a' },

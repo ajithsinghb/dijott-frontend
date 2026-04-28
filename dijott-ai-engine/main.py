@@ -20,7 +20,7 @@ def search_live_regulations(query: str) -> str:
 
 # 2. Initialize the Ultra Model with Tools
 model = genai.GenerativeModel(
-    model_name='gemini-2.1-pro',
+    model_name='gemini-1.5-pro', # ✅ Changed to the correct API string
     tools=[search_live_regulations]
 )
 
