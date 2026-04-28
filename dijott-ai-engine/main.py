@@ -141,20 +141,25 @@ async def format_field_notes(payload: NotesPayload):
     except Exception as e:
         return {"error": f"Failed to format notes: {str(e)}"}
 
-# --- 2. THE MULTI-ENGINE DEEP RESEARCH ENDPOINT ---
+# --- 2. THE MULTI-ENGINE DEEP RESEARCH ENDPOINT (UPGRADED) ---
 @app.get("/api/research")
-async def fetch_research(topic: str):
+async def fetch_research(topic: str, year_start: str = "2020", limit: int = 50):
     formatted_papers = []
+    
+    # Format the year for Semantic Scholar (e.g., "2020-")
+    year_param = f"{year_start}-"
+
     try:
-        print(f"🔍 [Engine 1] Querying Semantic Scholar for: {topic}")
+        print(f"🔍 [Engine 1] Querying Semantic Scholar for: {topic} (Since {year_start})")
         url_s2 = "https://api.semanticscholar.org/graph/v1/paper/search"
-        params_s2 = {"query": topic, "limit": 30, "fields": "title,authors,year,abstract,url", "year": "2020-"}
+        # We ask the API for up to 100 results, then filter down to our custom limit
+        params_s2 = {"query": topic, "limit": 100, "fields": "title,authors,year,abstract,url", "year": year_param}
         response_s2 = requests.get(url_s2, params=params_s2)
         
         if response_s2.status_code == 200:
             raw_papers = response_s2.json().get("data", [])
             for paper in raw_papers:
-                if not paper.get("abstract"): continue
+                if not paper.get("abstract"): continue # Skip papers with no abstract
                 author_names = [author['name'] for author in paper.get('authors', [])]
                 formatted_papers.append({
                     "title": paper.get("title", "Unknown Title"),
@@ -164,14 +169,16 @@ async def fetch_research(topic: str):
                     "url": paper.get("url", ""),
                     "source": "Semantic Scholar"
                 })
-                if len(formatted_papers) == 15: break
+                # Check against your new dynamic limit!
+                if len(formatted_papers) >= limit: break
             if formatted_papers: return {"topic_searched": topic, "papers": formatted_papers}
-    except:
-        print("⚠️ Semantic Scholar Error. Triggering Fallback...")
+    except Exception as e:
+        print(f"⚠️ Semantic Scholar Error: {e}. Triggering Fallback...")
 
     try:
-        print(f"🔄 [Engine 2] Querying OpenAlex for: {topic}")
-        url_oa = f"https://api.openalex.org/works?search={topic}&per-page=30&mailto=researcher@dijott.com"
+        print(f"🔄 [Engine 2] Querying OpenAlex for: {topic} (Since {year_start})")
+        # OpenAlex requires a slightly different filter syntax
+        url_oa = f"https://api.openalex.org/works?search={topic}&filter=publication_year:>{int(year_start)-1}&per-page=100&mailto=researcher@dijott.com"
         response_oa = requests.get(url_oa)
         response_oa.raise_for_status()
         raw_papers = response_oa.json().get("results", [])
@@ -188,7 +195,7 @@ async def fetch_research(topic: str):
                 "url": paper.get("id", ""), 
                 "source": "OpenAlex"
             })
-            if len(formatted_papers) == 15: break
+            if len(formatted_papers) >= limit: break
         return {"topic_searched": topic, "papers": formatted_papers}
     except Exception as e:
         return {"error": f"Both Semantic Scholar and OpenAlex failed. Details: {str(e)}"}

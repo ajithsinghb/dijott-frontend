@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Linking } from 'react-native';
+import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Linking, Platform, Alert } from 'react-native';
 import { useBriefcase } from '../../context/BriefcaseContext'; 
 
 export default function ResearchHubScreen() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [yearStart, setYearStart] = useState('2020'); // <-- NEW: Default year filter
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
-  const [statusMessage, setStatusMessage] = useState(''); // <-- NEW: On-screen messaging!
+  const [statusMessage, setStatusMessage] = useState(''); 
   
   const { savedArticles, addArticle } = useBriefcase(); 
 
@@ -18,37 +19,60 @@ export default function ResearchHubScreen() {
 
     setIsSearching(true);
     setSearchResults([]); 
-    setStatusMessage(''); // Clear previous messages
+    setStatusMessage('');
 
     try {
-      const response = await fetch(`http://localhost:8000/api/research?topic=${encodeURIComponent(searchQuery)}`);
+      // ⚠️ Pointed to your live Render server, added year_start, and limit=50
+      const url = `https://dijott-ai-engine.onrender.com/api/research?topic=${encodeURIComponent(searchQuery)}&year_start=${yearStart}&limit=50`;
+      const response = await fetch(url);
       const data = await response.json();
 
       if (data.error) {
-        // If Semantic Scholar blocks us or fails, print it to the screen!
         setStatusMessage(`❌ Search Failed: ${data.error}`);
       } else if (data.papers && data.papers.length === 0) {
-        // If the search was too obscure
-        setStatusMessage("⚠️ No academic papers found for those exact keywords. Try a broader search.");
+        setStatusMessage(`⚠️ No academic papers found since ${yearStart}. Try an older year or broader search.`);
       } else {
         setSearchResults(data.papers);
       }
     } catch (error) {
-      setStatusMessage(`🔌 Connection Error: Make sure your Python server is running! Details: ${error.message}`);
+      setStatusMessage(`🔌 Connection Error: Could not reach AI Engine. Details: ${error.message}`);
     } finally {
       setIsSearching(false);
     }
   };
 
+  // --- NEW: EXPORT SESSION FEATURE ---
+  const exportBriefcase = () => {
+    if (!savedArticles || savedArticles.length === 0) {
+      return Alert.alert("Empty", "No papers in your briefcase to save!");
+    }
+
+    const jsonString = JSON.stringify(savedArticles, null, 2);
+    
+    if (Platform.OS === 'web') {
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "dijott_research_session.json";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } else {
+      Alert.alert("Notice", "File export is currently optimized for the Web Dashboard.");
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         
         {/* HEADER */}
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.header}>Research Hub</Text>
-            <Text style={styles.subtitle}>Academic Database Search (Semantic Scholar)</Text>
+            <Text style={styles.subtitle}>Academic Database Search (Max: 50 Papers)</Text>
           </View>
         </View>
 
@@ -58,17 +82,25 @@ export default function ResearchHubScreen() {
           <View style={styles.searchContainer}>
             <TextInput
               style={styles.searchInput}
-              placeholder="e.g., PFAS water treatment"
+              placeholder="e.g., PFAS water"
               value={searchQuery}
               onChangeText={setSearchQuery}
               onSubmitEditing={performSearch}
+            />
+            <TextInput
+              style={styles.yearInput}
+              placeholder="Year"
+              value={yearStart}
+              onChangeText={setYearStart}
+              keyboardType="numeric"
+              maxLength={4}
             />
             <TouchableOpacity style={styles.searchBtn} onPress={performSearch} disabled={isSearching}>
               <Text style={styles.btnText}>{isSearching ? '...' : 'Search'}</Text>
             </TouchableOpacity>
           </View>
           
-          {/* NEW: VISUAL STATUS MESSAGE BOX */}
+          {/* VISUAL STATUS MESSAGE BOX */}
           {statusMessage !== '' && (
             <View style={styles.statusBox}>
               <Text style={styles.statusText}>{statusMessage}</Text>
@@ -80,7 +112,7 @@ export default function ResearchHubScreen() {
         {isSearching && (
           <View style={styles.loadingContainer}>
              <ActivityIndicator size="large" color="#3498db" />
-             <Text style={styles.loadingText}>Searching Academic Databases...</Text>
+             <Text style={styles.loadingText}>Scouring Academic Databases...</Text>
           </View>
         )}
 
@@ -89,7 +121,16 @@ export default function ResearchHubScreen() {
           <View style={styles.section}>
             <View style={styles.resultsHeader}>
               <Text style={styles.sectionTitle}>Results ({searchResults.length})</Text>
-              <Text style={styles.briefcaseStatus}>💼 In Briefcase: {savedArticles.length}</Text>
+              
+              {/* THE NEW BRIEFCASE EXPORT AREA */}
+              <View style={styles.briefcaseContainer}>
+                <Text style={styles.briefcaseStatus}>💼 In Briefcase: {savedArticles.length}</Text>
+                {savedArticles.length > 0 && (
+                  <TouchableOpacity style={styles.exportBtn} onPress={exportBriefcase}>
+                    <Text style={styles.exportBtnText}>💾 Save Session</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
             
             {searchResults.map((paper, index) => {
@@ -99,7 +140,7 @@ export default function ResearchHubScreen() {
                  <View key={index} style={styles.articleCard}>
                    <Text style={styles.articleTitle}>{paper.title}</Text>
                    <Text style={styles.articleMeta}>{paper.authors} ({paper.year})</Text>
-                   <Text style={styles.articleAbstract} numberOfLines={3}>{paper.abstract}</Text>
+                   <Text style={styles.articleAbstract} numberOfLines={4}>{paper.abstract}</Text>
                    
                    <View style={styles.cardActions}>
                      {paper.url ? (
@@ -136,18 +177,23 @@ const styles = StyleSheet.create({
   section: { backgroundColor: '#FFFFFF', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#34495e', marginBottom: 10 },
   searchContainer: { flexDirection: 'row', gap: 10 },
-  searchInput: { flex: 1, borderWidth: 1, borderColor: '#bdc3c7', borderRadius: 8, padding: 10, fontSize: 16 },
+  searchInput: { flex: 3, borderWidth: 1, borderColor: '#bdc3c7', borderRadius: 8, padding: 10, fontSize: 16 },
+  yearInput: { flex: 1, borderWidth: 1, borderColor: '#bdc3c7', borderRadius: 8, padding: 10, fontSize: 16, textAlign: 'center' },
   searchBtn: { backgroundColor: '#3498db', padding: 12, borderRadius: 8, justifyContent: 'center' },
   btnText: { color: 'white', fontWeight: 'bold' },
   
-  /* NEW STATUS BOX STYLES */
   statusBox: { marginTop: 15, padding: 10, backgroundColor: '#fdfefe', borderWidth: 1, borderColor: '#e74c3c', borderRadius: 8 },
   statusText: { color: '#c0392b', fontSize: 14, fontWeight: '500' },
 
   loadingContainer: { alignItems: 'center', padding: 20 },
   loadingText: { marginTop: 10, color: '#7f8c8d' },
-  resultsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  briefcaseStatus: { color: '#16a085', fontWeight: 'bold' },
+  
+  resultsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, flexWrap: 'wrap' },
+  briefcaseContainer: { alignItems: 'flex-end' },
+  briefcaseStatus: { color: '#16a085', fontWeight: 'bold', marginBottom: 5 },
+  exportBtn: { backgroundColor: '#e67e22', paddingVertical: 5, paddingHorizontal: 10, borderRadius: 6 },
+  exportBtnText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
+
   articleCard: { backgroundColor: '#fdfefe', padding: 15, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#ecf0f1' },
   articleTitle: { fontSize: 16, fontWeight: 'bold', color: '#2c3e50', marginBottom: 5 },
   articleMeta: { fontSize: 13, color: '#7f8c8d', marginBottom: 10, fontStyle: 'italic' },
