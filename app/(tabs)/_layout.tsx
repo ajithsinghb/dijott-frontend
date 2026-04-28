@@ -42,6 +42,14 @@ export default function TabLayout() {
           tabBarIcon: () => <span style={{ fontSize: 20 }}>✍️</span>,
         }}
       />
+
+<Tabs.Screen
+  name="engineer"
+  options={{
+    title: 'Calc',
+    tabBarIcon: () => <Text style={{ fontSize: 24 }}>⚙️</Text>,
+  }}
+/>
       
       {/* Hide the default "explore" tab if you still have that file */}
       <Tabs.Screen
