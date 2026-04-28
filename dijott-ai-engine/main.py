@@ -124,7 +124,7 @@ async def format_field_notes(payload: NotesPayload):
         You are a Senior Regulatory Field Inspector, Scientist, Occupational Hygienist, Enviornmental, Mechanical, Civil Engineer and Chemical Engineer. 
         Take the following rough, messy field notes and rewrite them into a clean, highly professional, objective, and spell-checked field report paragraph.
         DO NOT add any made-up data. ONLY use the facts provided. 
-        Format it cleanly using bullet points if multiple distinct observations are made. Use appropriate apa style, intext and endtext references. 
+        Format it cleanly using bullet points if multiple distinct observations are made. Use appropriate APA style, in-text and end-text references. 
 
         RAW NOTES:
         {payload.text}
@@ -262,7 +262,7 @@ async def websocket_deep_research(websocket: WebSocket):
             STRICT ACADEMIC WRITING RULES:
             1. STRUCTURE: Follow the IMRaD format principles. If writing an Introduction, use a "funnel" approach—start broad and narrow down to the research question. If writing a Discussion, start by summarizing results, address the knowledge gap, and suggest future clinical implications.
             2. SYNTHESIS, NO PLAGIARISM: Do not engage in "mosaic plagiarism" (poor paraphrasing). Synthesize the research context entirely into your own original academic voice.
-            3. CITATIONS: Use the Vancouver referencing style. Number references sequentially in the text using brackets (e.g., [1], [2]) based on the Source Material provided.
+            3. CITATIONS: Use the APA referencing style. Cite sources in the text using the author-date format (e.g., (Smith, 2023) or (Jones et al., 2022)) based on the Source Material provided.
             4. TONE: Maintain absolute objective, scientific rigor. 
             
             IMPORTANT: Use your `search_live_regulations` tool if you need to look up the latest updates before writing!
