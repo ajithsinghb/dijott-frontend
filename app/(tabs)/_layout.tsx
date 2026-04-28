@@ -1,45 +1,45 @@
 import { Tabs } from 'expo-router';
-import { Platform, Text } from 'react-native'; // ✅ Added Text import here!
+import { Platform, Text } from 'react-native'; 
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false, // Hides the duplicate top header
-        tabBarActiveTintColor: '#9b59b6', // The purple color for the active tab
+        headerShown: false,
+        tabBarActiveTintColor: '#9b59b6', 
         tabBarStyle: {
-          backgroundColor: '#1e272e', // A sleek dark mode tab bar
+          backgroundColor: '#1e272e', 
           borderTopWidth: 0,
           elevation: 10,
-          height: Platform.OS === 'web' ? 60 : 70, // Gives it breathing room
+          height: Platform.OS === 'web' ? 60 : 70, 
           paddingBottom: Platform.OS === 'web' ? 10 : 20,
         },
       }}>
       
-      {/* TAB 1: The Main Notepad */}
+      {/* TAB 1: Home */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: () => <Text style={{ fontSize: 20 }}>🏠</Text>, // ✅ Swapped span for Text
+          tabBarIcon: () => <Text style={{ fontSize: 20 }}>🏠</Text>, 
         }}
       />
 
-      {/* TAB 2: The Briefcase/Research Hub */}
+      {/* TAB 2: Research Hub */}
       <Tabs.Screen
         name="research" 
         options={{
           title: 'Research Hub',
-          tabBarIcon: () => <Text style={{ fontSize: 20 }}>💼</Text>, // ✅ Swapped span for Text
+          tabBarIcon: () => <Text style={{ fontSize: 20 }}>💼</Text>, 
         }}
       />
 
-      {/* TAB 3: The AI Writer */}
+      {/* TAB 3: Deep Writer */}
       <Tabs.Screen
         name="deep-writer"
         options={{
           title: 'Deep Writer',
-          tabBarIcon: () => <Text style={{ fontSize: 20 }}>✍️</Text>, // ✅ Swapped span for Text
+          tabBarIcon: () => <Text style={{ fontSize: 20 }}>✍️</Text>, 
         }}
       />
 
@@ -52,11 +52,17 @@ export default function TabLayout() {
         }}
       />
       
-      {/* Hide the default "explore" tab if you still have that file */}
+      {/* --- HIDE UNWANTED TABS --- */}
+      <Tabs.Screen
+        name="writer"
+        options={{
+          href: null, // ✅ This hides the rogue "writer" tab!
+        }}
+      />
       <Tabs.Screen
         name="explore"
         options={{
-          href: null, // This completely hides the tab from the bar
+          href: null, // Hides the default explore tab
         }}
       />
     </Tabs>
