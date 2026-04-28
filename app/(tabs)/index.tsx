@@ -141,72 +141,77 @@ export default function NotepadScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.header}>{user?.firstName ? `${user.firstName}'s dijott` : 'dijott'}</Text>
-          <Text style={styles.status}>{status}</Text>
-        </View>
-        <TouchableOpacity style={styles.signOutButton} onPress={() => signOut()}>
-          <Text style={styles.buttonText}>🚪 Sign Out</Text>
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.toolbar}>
-        <TouchableOpacity style={[styles.button, isRecording ? styles.recordingButton : styles.audioButton]} onPress={toggleRecording}>
-          <Text style={styles.buttonText}>{isRecording ? '🛑 Stop' : draftAudio ? '🎵 Saved!' : '🎙️ Record'}</Text>
-        </TouchableOpacity>
+      {/* --- ADDED SCROLLVIEW HERE TO PREVENT TAB PUSH-DOWN --- */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}>
         
-        <TouchableOpacity style={[styles.button, styles.cameraButton]} onPress={takePhoto}>
-          <Text style={styles.buttonText}>📷 Snap Pic</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.button} onPress={pickImage}>
-          <Text style={styles.buttonText}>{draftImages.length > 0 ? `🖼️ ${draftImages.length} Picked` : '📎 Image'}</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={[styles.button, styles.wordButton]} onPress={exportToWord}>
-          <Text style={styles.buttonText}>📄 Save Word Doc</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.button, styles.pdfButton]} onPress={pickPdf}>
-          <Text style={styles.buttonText}>📑 Add PDF{draftPdfs.length > 0 ? `s (${draftPdfs.length})` : ''}</Text>
-        </TouchableOpacity>
-
-        {draftPdfs.length > 0 && (
-          <TouchableOpacity style={[styles.button, styles.clearButton]} onPress={() => setDraftPdfs([])}>
-            <Text style={styles.buttonText}>❌ Clear PDFs</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <TouchableOpacity style={[styles.button, styles.aiButton, isThinking && styles.disabledButton]} onPress={processNote} disabled={isThinking}>
-        <Text style={styles.buttonText}>✨ Format with AI</Text>
-      </TouchableOpacity>
-
-      {isRecording && (
-        <View style={styles.recordingIndicator}>
-          <Text style={styles.recordingText}>🔴 Recording in progress... feel free to snap photos!</Text>
-        </View>
-      )}
-
-      {draftImages.length > 0 && (
-         <View style={styles.photoCountIndicator}>
-           <Text style={styles.photoCountText}>✅ {draftImages.length} photos ready for report</Text>
-         </View>
-      )}
-
-      <TextInput style={styles.input} multiline placeholder="Type field notes or instructions here..." value={note} onChangeText={setNote} />
-
-      {aiResponse !== '' && (
-        <View style={styles.aiBox}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <Text style={styles.aiHeader}>Generated Report:</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.header}>{user?.firstName ? `${user.firstName}'s dijott` : 'dijott'}</Text>
+            <Text style={styles.status}>{status}</Text>
           </View>
-          <ScrollView style={styles.aiScroll}>
-            <Text style={styles.aiText}>{aiResponse}</Text>
-          </ScrollView>
+          <TouchableOpacity style={styles.signOutButton} onPress={() => signOut()}>
+            <Text style={styles.buttonText}>🚪 Sign Out</Text>
+          </TouchableOpacity>
         </View>
-      )}
+        
+        <View style={styles.toolbar}>
+          <TouchableOpacity style={[styles.button, isRecording ? styles.recordingButton : styles.audioButton]} onPress={toggleRecording}>
+            <Text style={styles.buttonText}>{isRecording ? '🛑 Stop' : draftAudio ? '🎵 Saved!' : '🎙️ Record'}</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={[styles.button, styles.cameraButton]} onPress={takePhoto}>
+            <Text style={styles.buttonText}>📷 Snap Pic</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.button} onPress={pickImage}>
+            <Text style={styles.buttonText}>{draftImages.length > 0 ? `🖼️ ${draftImages.length} Picked` : '📎 Image'}</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={[styles.button, styles.wordButton]} onPress={exportToWord}>
+            <Text style={styles.buttonText}>📄 Save Word Doc</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.button, styles.pdfButton]} onPress={pickPdf}>
+            <Text style={styles.buttonText}>📑 Add PDF{draftPdfs.length > 0 ? `s (${draftPdfs.length})` : ''}</Text>
+          </TouchableOpacity>
+
+          {draftPdfs.length > 0 && (
+            <TouchableOpacity style={[styles.button, styles.clearButton]} onPress={() => setDraftPdfs([])}>
+              <Text style={styles.buttonText}>❌ Clear PDFs</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <TouchableOpacity style={[styles.button, styles.aiButton, isThinking && styles.disabledButton]} onPress={processNote} disabled={isThinking}>
+          <Text style={styles.buttonText}>✨ Format with AI</Text>
+        </TouchableOpacity>
+
+        {isRecording && (
+          <View style={styles.recordingIndicator}>
+            <Text style={styles.recordingText}>🔴 Recording in progress... feel free to snap photos!</Text>
+          </View>
+        )}
+
+        {draftImages.length > 0 && (
+           <View style={styles.photoCountIndicator}>
+             <Text style={styles.photoCountText}>✅ {draftImages.length} photos ready for report</Text>
+           </View>
+        )}
+
+        <TextInput style={styles.input} multiline placeholder="Type field notes or instructions here..." value={note} onChangeText={setNote} />
+
+        {aiResponse !== '' && (
+          <View style={styles.aiBox}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <Text style={styles.aiHeader}>Generated Report:</Text>
+            </View>
+            <ScrollView style={styles.aiScroll}>
+              <Text style={styles.aiText}>{aiResponse}</Text>
+            </ScrollView>
+          </View>
+        )}
+      
+      </ScrollView>
     </View>
   );
 }

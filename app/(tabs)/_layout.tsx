@@ -1,42 +1,53 @@
 import { Tabs } from 'expo-router';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { Platform } from 'react-native';
 
 export default function TabLayout() {
   return (
-    <Tabs 
+    <Tabs
       screenOptions={{
-        headerShown: false, // We hide the default headers because you built custom ones
-        tabBarActiveTintColor: '#2980b9', // The color when a tab is selected
-        tabBarInactiveTintColor: '#95a5a6', // The color when a tab is not selected
-        tabBarStyle: { 
-          backgroundColor: '#ffffff', 
-          borderTopWidth: 1, 
-          borderTopColor: '#ecf0f1', 
-          paddingBottom: 5, 
-          paddingTop: 5,
-          height: 60 
+        headerShown: false, // Hides the duplicate top header
+        tabBarActiveTintColor: '#9b59b6', // The purple color for the active tab
+        tabBarStyle: {
+          backgroundColor: '#1e272e', // A sleek dark mode tab bar
+          borderTopWidth: 0,
+          elevation: 10,
+          height: Platform.OS === 'web' ? 60 : 70, // Gives it breathing room
+          paddingBottom: Platform.OS === 'web' ? 10 : 20,
         },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: 'bold'
-        }
-      }}
-    >
-      {/* TAB 1: THE FIELD NOTEPAD */}
+      }}>
+      
+      {/* TAB 1: The Main Notepad */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Field Notes',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="clipboard-list" size={20} color={color} />,
+          title: 'Home',
+          tabBarIcon: () => <span style={{ fontSize: 20 }}>🏠</span>,
+        }}
+      />
+
+      {/* TAB 2: The Briefcase/Research Hub */}
+      <Tabs.Screen
+        name="research" 
+        options={{
+          title: 'Research Hub',
+          tabBarIcon: () => <span style={{ fontSize: 20 }}>💼</span>,
+        }}
+      />
+
+      {/* TAB 3: The AI Writer */}
+      <Tabs.Screen
+        name="deep-writer"
+        options={{
+          title: 'Deep Writer',
+          tabBarIcon: () => <span style={{ fontSize: 20 }}>✍️</span>,
         }}
       />
       
-      {/* TAB 2: THE WRITER STUDIO */}
+      {/* Hide the default "explore" tab if you still have that file */}
       <Tabs.Screen
-        name="writer"
+        name="explore"
         options={{
-          title: 'Writer Studio',
-          tabBarIcon: ({ color }) => <FontAwesome5 name="pen-fancy" size={20} color={color} />,
+          href: null, // This completely hides the tab from the bar
         }}
       />
     </Tabs>
