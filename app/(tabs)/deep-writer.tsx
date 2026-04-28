@@ -3,6 +3,8 @@ import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView, Tex
 import * as DocumentPicker from 'expo-document-picker';
 
 export default function DeepWriterScreen() {
+  // --- ADDED STATE VARIABLES ---
+  const [docType, setDocType] = useState('Journal Article');
   const [rubric, setRubric] = useState('');
   const [previousSections, setPreviousSections] = useState('');
   
@@ -68,7 +70,8 @@ export default function DeepWriterScreen() {
       ws.current.send(JSON.stringify({
         rubric: rubric,
         briefcase_data: briefcaseData, 
-        previous_sections: previousSections
+        previous_sections: previousSections,
+        doc_type: docType // <-- Send the new selection to Python!
       }));
     };
 
@@ -115,6 +118,27 @@ export default function DeepWriterScreen() {
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>Deep Writer</Text>
           <Text style={styles.headerSubtitle}>Context-Aware Agentic Drafting</Text>
+        </View>
+
+        {/* NEW SECTION: DOCUMENT TYPE SELECTOR */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Document Type</Text>
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+            {['Journal Article', "Master's Dissertation", 'PhD Thesis'].map((type) => (
+              <TouchableOpacity 
+                key={type}
+                onPress={() => setDocType(type)}
+                style={{
+                  flex: 1, padding: 10, borderRadius: 8, alignItems: 'center',
+                  backgroundColor: docType === type ? '#9b59b6' : '#ecf0f1'
+                }}
+              >
+                <Text style={{ color: docType === type ? 'white' : '#2c3e50', fontWeight: 'bold', fontSize: 12, textAlign: 'center' }}>
+                  {type}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* SECTION 1: INSTRUCTIONS */}
