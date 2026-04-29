@@ -171,10 +171,4 @@ const styles = StyleSheet.create({
   previewBox: { marginTop: 15, padding: 10, backgroundColor: '#e8f8f5', borderRadius: 8, borderWidth: 1, borderColor: '#1abc9c', alignItems: 'center' },
   previewText: { color: '#16a085', fontWeight: 'bold', marginBottom: 5 },
   imagePreview: { width: '100%', height: 200, borderRadius: 8, resizeMode: 'contain' },
-  textArea: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#bdc3c7', borderRadius: 8, padding: 15, fontSize: 16, minHeight: 100, textAlignVertical: 'top', color: '#2c3e50' },
-  calcBtn: { backgroundColor: '#e67e22', padding: 20, borderRadius: 8, alignItems: 'center', marginBottom: 20, elevation: 2 },
-  calcBtnText: { color: 'white', fontWeight: 'bold', fontSize: 18, letterSpacing: 1 },
-  resultBox: { backgroundColor: '#fff3e0', padding: 20, borderRadius: 12, borderWidth: 1, borderColor: '#ffb74d', minHeight: 200 },
-  resultTitle: { fontWeight: 'bold', color: '#e65100', fontSize: 18, marginBottom: 15 },
-  resultText: { color: '#424242', fontSize: 16, lineHeight: 26 },
-});
+  textArea: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#bdc3c7', borderRadius: 8, padding: 15, fontSize: 16, minHeight: 100, textAlignVertical: 'top', color: '#2c3e5
